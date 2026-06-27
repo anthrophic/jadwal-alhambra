@@ -1,0 +1,25 @@
+{
+  "name": "Jadwal Kerja Alhambra",
+  "short_name": "Jadwal",
+  "description": "Aplikasi jadwal kerja karyawan Alhambra",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#100E12",
+  "theme_color": "#100E12",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "alhambra.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "alhambra.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
