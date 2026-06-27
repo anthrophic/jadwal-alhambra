@@ -1,0 +1,386 @@
+<!-- Made with ❤️ @pearanoids -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Jadwal Kerja</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="alhambra.png">
+  <link rel="icon" type="image/png" href="alhambra.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jadwal">
+  <meta name="theme-color" content="#100E12">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    body{
+      background:#100E12;color:#F5D8E4;
+      font-family:Inter,Arial,sans-serif;
+      padding:16px;display:flex;justify-content:center;
+      align-items:center;min-height:100vh
+    }
+
+    .container{max-width:760px;width:100%;position:relative}
+
+    /* ── Admin button ── */
+    .admin-btn{
+      position:fixed;top:14px;right:14px;
+      height:36px;padding:0 14px;
+      border:1px solid #D4809A;border-radius:10px;
+      background:#C47088;color:#100E12;
+      font-size:13px;font-weight:700;
+      cursor:pointer;z-index:999;transition:0.2s
+    }
+    .admin-btn:hover{background:#D4809A;transform:translateY(-1px)}
+    .admin-btn.hide{opacity:0;pointer-events:none}
+
+    /* ── Login overlay ── */
+    .login-overlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,0.7);
+      display:none;justify-content:center;align-items:center;z-index:1000
+    }
+    .login-box{
+      width:100%;max-width:320px;
+      background:#19161C;border:1px solid #272228;
+      border-radius:20px;padding:20px;position:relative;
+      box-shadow:0 16px 48px rgba(0,0,0,0.6)
+    }
+    .close-login{
+      position:absolute;top:10px;right:10px;
+      width:28px;height:28px;border:none;border-radius:8px;
+      background:#272228;color:#E098B0;
+      font-size:14px;font-weight:bold;cursor:pointer;transition:0.2s
+    }
+    .close-login:hover{background:#32282E}
+    .login-title{
+      text-align:center;font-size:18px;
+      font-weight:800;color:#F5D8E4;margin-bottom:14px
+    }
+    .login-input{
+      width:100%;height:42px;
+      background:#100E12;border:1px solid #272228;
+      border-radius:12px;color:#F5D8E4;
+      padding:0 12px;outline:none;
+      margin-bottom:10px;font-size:14px;transition:0.2s
+    }
+    .login-input::placeholder{color:#4A3848}
+    .login-input:focus{
+      border-color:#C47088;
+      box-shadow:0 0 0 3px rgba(196,112,136,0.15)
+    }
+    .login-submit{
+      width:100%;height:42px;border:none;
+      border-radius:12px;background:#C47088;
+      color:#100E12;font-weight:700;font-size:14px;
+      cursor:pointer;transition:0.2s
+    }
+    .login-submit:hover{background:#D4809A}
+    .login-submit:disabled{opacity:0.5;cursor:not-allowed}
+    .login-error{
+      color:#E098B0;font-size:12px;
+      text-align:center;margin-top:8px;min-height:18px
+    }
+
+    /* ── Header ── */
+    .header{margin-bottom:20px;text-align:center}
+    .title{font-size:28px;font-weight:800;color:#F5D8E4;letter-spacing:-0.5px}
+    .subtitle{margin-top:5px;color:#4A3848;font-size:14px}
+
+    /* ── Employee cards ── */
+    .employee{
+      background:#19161C;border:1px solid #272228;
+      border-radius:22px;overflow:hidden;
+      margin-bottom:14px;transition:0.25s ease;
+      box-shadow:0 4px 20px rgba(0,0,0,0.35)
+    }
+    .employee.active{
+      border-color:#C47088;
+      box-shadow:0 0 0 1px rgba(196,112,136,0.2),0 12px 32px rgba(0,0,0,0.5)
+    }
+    .employee-header{
+      padding:18px;cursor:pointer;
+      display:flex;align-items:center;
+      justify-content:center;position:relative;transition:0.2s
+    }
+    .employee-header:hover{background:#272228}
+    .name{font-size:19px;font-weight:700;color:#F5D8E4;text-align:center}
+    .arrow{
+      font-size:22px;color:#4A3848;
+      transition:0.3s;position:absolute;right:18px
+    }
+    .employee.active .arrow{transform:rotate(180deg);color:#C47088}
+
+    /* ── Accordion content ── */
+    .content{
+      max-height:0;overflow:hidden;
+      transition:max-height 0.45s ease;background:#140F16
+    }
+    .employee.active .content{max-height:2500px}
+    .inner{padding:16px}
+    .schedule{display:flex;flex-direction:column;gap:12px}
+
+    /* ── Day card ── */
+    .day{
+      background:#1D1920;border:1px solid #272228;
+      border-radius:16px;padding:14px;transition:0.2s
+    }
+    .day-today{
+      background:#232028;
+      border-color:#C47088;
+      box-shadow:0 0 0 1px rgba(196,112,136,0.2);
+    }
+    .top{
+      position:relative;display:flex;
+      align-items:center;justify-content:space-between;margin-bottom:14px
+    }
+    .day-name{font-size:15px;font-weight:700;color:#E098B0;text-transform:uppercase;z-index:2}
+    .date{
+      position:absolute;left:50%;transform:translateX(-50%);
+      font-size:13px;color:#4A3848;text-align:center;width:max-content
+    }
+    .time{font-size:20px;color:#F5D8E4;font-weight:700;text-align:center}
+    .badge{
+      display:inline-block;padding:4px 10px;
+      border-radius:7px;font-size:12px;
+      font-weight:700;text-transform:uppercase;z-index:2
+    }
+    .badge-off{background:#220C18;color:#E098B0}
+
+    /* ── Footer ── */
+    .footer{
+      margin-top:15px;padding-top:15px;
+      border-top:1px solid #272228;
+      color:#4A3848;font-size:13px;text-align:center
+    }
+    .footer span{color:#E098B0;font-weight:600}
+    .loading-msg{text-align:center;padding:60px 20px;color:#4A3848;font-size:15px}
+
+    @media(max-width:600px){
+      body{padding:13px}
+      .title{font-size:24px}
+      .employee-header{padding:16px}
+      .name{font-size:18px}
+      .time{font-size:18px}
+      .date{font-size:12px}
+      .arrow{right:16px}
+    }
+  </style>
+</head>
+<body>
+
+<button class="admin-btn hide" id="adminBtn" onclick="openLogin()">Login</button>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <button class="close-login" onclick="closeLogin()">✕</button>
+    <div class="login-title">Admin Panel</div>
+    <input type="email"    class="login-input" id="email"    placeholder="Email"    autocomplete="username"/>
+    <input type="password" class="login-input" id="password" placeholder="Password" autocomplete="current-password"/>
+    <button class="login-submit" id="loginBtn" onclick="loginAdmin()">LOGIN</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div class="container" id="app">
+  <div class="loading-msg">⏳ Memuat jadwal...</div>
+</div>
+
+<script type="module">
+  import { initializeApp }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  // ⚠️ GANTI dengan firebaseConfig project Firebase BARU kamu
+  const firebaseConfig = {
+    apiKey:            "GANTI_DENGAN_API_KEY",
+    authDomain:        "GANTI_DENGAN_PROJECT_ID.firebaseapp.com",
+    databaseURL:       "https://GANTI_DENGAN_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "GANTI_DENGAN_PROJECT_ID",
+    storageBucket:     "GANTI_DENGAN_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "GANTI_DENGAN_SENDER_ID",
+    appId:             "GANTI_DENGAN_APP_ID"
+  };
+
+  const db   = getDatabase(initializeApp(firebaseConfig));
+  const auth = getAuth();
+
+  // ── Cached DOM refs ───────────────────────────────────────
+  const $app      = document.getElementById("app");
+  const $adminBtn = document.getElementById("adminBtn");
+  const $overlay  = document.getElementById("loginOverlay");
+  const $email    = document.getElementById("email");
+  const $password = document.getElementById("password");
+  const $loginBtn = document.getElementById("loginBtn");
+  const $loginErr = document.getElementById("loginError");
+
+  // ── Constants ─────────────────────────────────────────────
+  const HARI = ["SENIN","SELASA","RABU","KAMIS","JUMAT","SABTU","MINGGU"];
+  const pad  = n => String(n).padStart(2, "0");
+  const LABEL_FALLBACK = {S1:"SHIFT 1",S2:"SHIFT 2",S3:"SHIFT 3",S2O:"S2 (OFF 1)",FD:"FULL DAY"};
+
+  // ── Helpers ───────────────────────────────────────────────
+  const formatTgl = d => `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
+
+  function getTanggals(start) {
+    const base = new Date(start + "T00:00:00");
+    return HARI.map((_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return formatTgl(d);
+    });
+  }
+
+  function getSubjudul(start, override) {
+    if (override) return override;
+    const s = new Date(start + "T00:00:00");
+    const e = new Date(s);
+    e.setDate(s.getDate() + 6);
+    const fmt = d => d.toLocaleDateString("id-ID", {day:"numeric",month:"long",year:"numeric"});
+    return `${fmt(s)} – ${fmt(e)}`;
+  }
+
+  function getLabel(kode, s) {
+    const raw = s?.label;
+    return (!raw || raw === kode) ? (LABEL_FALLBACK[kode] || kode) : raw;
+  }
+
+  function renderBadge(kode, shifts) {
+    if (kode === "OFF") return `<div class="badge badge-off">OFF</div>`;
+    const s = shifts[kode];
+    if (!s) return `<div class="badge" style="background:#272228;color:#C47088">${kode}</div>`;
+    return `<div class="badge" style="background:${s.bg};color:${s.color}">${getLabel(kode, s)}</div>`;
+  }
+
+  function renderJam(kode, shifts) {
+    return kode === "OFF" ? "Hari Libur" : ((shifts[kode]?.jam) || "-");
+  }
+
+  function renderEmployee(nama, rawArr, tanggals, shifts) {
+    const arr       = Array.isArray(rawArr) ? rawArr : Object.values(rawArr);
+    const liburList = HARI.filter((_, i) => arr[i] === "OFF");
+    const footer    = liburList.length
+      ? `Hari libur : <span>${liburList.join(", ")}</span>`
+      : `<span>Tidak ada hari libur minggu ini</span>`;
+
+    const now      = new Date();
+    const todayStr = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+
+    const cards = HARI.map((hari, i) => {
+      const kode    = arr[i] || "OFF";
+      const isToday = tanggals[i] === todayStr;
+      return `<div class="day${isToday ? ' day-today' : ''}">
+        <div class="top">
+          <div class="day-name">${hari}</div>
+          <div class="date">${tanggals[i]}</div>
+          ${renderBadge(kode, shifts)}
+        </div>
+        <div class="time">${renderJam(kode, shifts)}</div>
+      </div>`;
+    }).join("");
+
+    return `<div class="employee">
+      <div class="employee-header">
+        <div class="name">${nama.toUpperCase()}</div>
+        <div class="arrow">&#8964;</div>
+      </div>
+      <div class="content">
+        <div class="inner">
+          <div class="schedule">${cards}</div>
+          <div class="footer">${footer}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Render ────────────────────────────────────────────────
+  function render({tanggalMulai, tampilan, shifts, jadwal}) {
+    if (!jadwal || !shifts || !tanggalMulai) return;
+    const tanggals = getTanggals(tanggalMulai);
+
+    $app.innerHTML =
+      `<div class="header">
+        <div class="title">${tampilan?.judul || "Jadwal Kerja"}</div>
+        <div class="subtitle">${getSubjudul(tanggalMulai, tampilan?.subjudul)}</div>
+      </div>` +
+      Object.entries(jadwal)
+        .map(([nama, arr]) => renderEmployee(nama, arr, tanggals, shifts))
+        .join("");
+
+    setupAccordion();
+  }
+
+  function setupAccordion() {
+    const emps = [...document.querySelectorAll(".employee")];
+    const hdr  = document.querySelector(".header");
+
+    const reset = () => {
+      emps.forEach(e => { e.classList.remove("active"); e.style.display = "block"; });
+      hdr.style.display = "block";
+      $adminBtn.classList.remove("hide");
+    };
+
+    emps.forEach(emp => {
+      emp.querySelector(".employee-header").addEventListener("click", () => {
+        const wasActive = emp.classList.contains("active");
+        reset();
+        if (!wasActive) {
+          emp.classList.add("active");
+          emps.forEach(e => { if (e !== emp) e.style.display = "none"; });
+          hdr.style.display = "none";
+          $adminBtn.classList.add("hide");
+        }
+      });
+    });
+  }
+
+  // ── Firebase listener ─────────────────────────────────────
+  onValue(ref(db, "config"), snap => {
+    const cfg = snap.val();
+    if (cfg) {
+      $adminBtn.classList.remove("hide");
+      render(cfg);
+    } else {
+      $app.innerHTML = `<div class="loading-msg">Belum ada jadwal yang dikonfigurasi.<br>Login sebagai Admin untuk mengatur jadwal.</div>`;
+      $adminBtn.classList.remove("hide");
+    }
+  }, () => {
+    $app.innerHTML = `<div class="loading-msg">Gagal memuat jadwal. Periksa koneksi internet.</div>`;
+  });
+
+  // ── Auth ──────────────────────────────────────────────────
+  window.openLogin = () => {
+    $overlay.style.display = "flex";
+    $loginErr.textContent  = "";
+    $email.focus();
+  };
+
+  window.closeLogin = () => { $overlay.style.display = "none"; };
+
+  window.loginAdmin = async () => {
+    const email = $email.value.trim();
+    const pass  = $password.value;
+    if (!email || !pass) { $loginErr.textContent = "Email dan password wajib diisi."; return; }
+
+    $loginBtn.textContent = "Logging in...";
+    $loginBtn.disabled    = true;
+    $loginErr.textContent = "";
+
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      window.location.href = "admin.html";
+    } catch {
+      $loginErr.textContent = "Email atau password salah.";
+      $loginBtn.textContent = "LOGIN";
+      $loginBtn.disabled    = false;
+    }
+  };
+
+  $password.addEventListener("keydown", e => { if (e.key === "Enter") window.loginAdmin(); });
+  $overlay.addEventListener("click",    e => { if (e.target === $overlay) window.closeLogin(); });
+</script>
+</body>
+</html>
+
