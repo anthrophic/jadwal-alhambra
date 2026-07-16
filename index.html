@@ -59,20 +59,36 @@
     }
     .gate-btn:hover{background:#D4809A;transform:translateY(-1px)}
     .gate-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-    .gate-denied-box{
-      background:#220C18;border:1px solid #3d1020;
-      border-radius:14px;padding:16px;max-width:300px;
-      margin-bottom:16px;text-align:left
+    .gate-denied-steps{
+      width:100%;max-width:300px;
+      background:#19161C;border:1px solid #272228;
+      border-radius:16px;padding:16px;margin-bottom:16px;
     }
-    .gate-denied-box p{font-size:13px;color:#E098B0;line-height:1.7}
-    .gate-denied-box strong{color:#F5D8E4}
+    .gate-denied-steps .step-title{
+      font-size:13px;color:#E098B0;font-weight:700;
+      margin-bottom:12px;text-align:center;
+    }
+    .gate-step{
+      display:flex;align-items:flex-start;gap:10px;
+      margin-bottom:10px;text-align:left;
+    }
+    .gate-step:last-child{margin-bottom:0}
+    .gate-step-num{
+      min-width:22px;height:22px;background:#C47088;
+      color:#100E12;border-radius:50%;display:flex;
+      align-items:center;justify-content:center;
+      font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;
+    }
+    .gate-step-text{font-size:13px;color:#4A3848;line-height:1.6}
+    .gate-step-text b{color:#F5D8E4}
     .gate-reload-btn{
-      height:40px;padding:0 20px;
-      border:1px solid #C47088;border-radius:12px;
-      background:transparent;color:#C47088;
-      font-size:13px;font-weight:700;cursor:pointer;transition:0.2s
+      height:50px;padding:0 28px;
+      border:none;border-radius:14px;
+      background:#C47088;color:#100E12;
+      font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;
+      letter-spacing:0.3px;
     }
-    .gate-reload-btn:hover{background:#C47088;color:#100E12}
+    .gate-reload-btn:hover{background:#D4809A;transform:translateY(-1px)}
 
     /* ── Admin button ── */
     .admin-btn{
@@ -241,19 +257,12 @@
     </button>
   </div>
 
-  <!-- Denied: muncul jika diblokir browser -->
+  <!-- Denied: muncul jika diblokir browser, langkah diisi otomatis oleh JS -->
   <div id="gateDenied">
-    <div class="gate-denied-box">
-      <p>
-        Notifikasi diblokir oleh browser kamu.<br><br>
-        Untuk mengaktifkan:<br>
-        Tap ikon 🔒 di address bar →
-        <strong>Izin situs</strong> →
-        aktifkan <strong>Notifikasi</strong> →
-        muat ulang halaman.
-      </p>
-    </div>
-    <button class="gate-reload-btn" onclick="location.reload()">🔄 Muat Ulang</button>
+    <div class="gate-denied-steps" id="gateDeniedSteps"></div>
+    <button class="gate-reload-btn" onclick="location.reload()">
+      ✅ Sudah Diaktifkan — Muat Ulang
+    </button>
   </div>
 </div>
 
@@ -307,7 +316,35 @@
     document.getElementById("gateAllow").style.display   = "block";
   }
   function gateShowDenied() {
+    // Deteksi perangkat untuk panduan yang tepat
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    const steps = isIOS
+      ? [
+          "Tutup dan buka ulang <b>Safari</b>",
+          "Tap <b>AA</b> atau ikon 🔒 di address bar",
+          "Tap <b>Pengaturan Website</b>",
+          "Aktifkan <b>Notifikasi</b>",
+          "Kembali ke sini, lalu tap tombol di bawah",
+        ]
+      : [
+          "Tap ikon <b>🔒</b> atau <b>ⓘ</b> di address bar browser",
+          "Tap <b>Izin situs</b> atau <b>Permissions</b>",
+          "Tap <b>Notifikasi</b>",
+          "Pilih <b>Izinkan</b>",
+          "Kembali ke sini, lalu tap tombol di bawah",
+        ];
+
+    document.getElementById("gateDeniedSteps").innerHTML =
+      `<div class="step-title">Notifikasi diblokir — ikuti langkah ini:</div>` +
+      steps.map((s, i) => `
+        <div class="gate-step">
+          <span class="gate-step-num">${i + 1}</span>
+          <span class="gate-step-text">${s}</span>
+        </div>`).join("");
+
     document.getElementById("gateLoading").style.display = "none";
+    document.getElementById("gateAllow").style.display   = "none";
     document.getElementById("gateDenied").style.display  = "block";
   }
 
