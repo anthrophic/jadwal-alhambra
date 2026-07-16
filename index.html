@@ -12,6 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Jadwal">
   <meta name="theme-color" content="#100E12">
+  <!-- OneSignal SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
 
@@ -23,6 +25,54 @@
     }
 
     .container{max-width:760px;width:100%;position:relative}
+
+    /* ── Notification Gate (wajib) ── */
+    #notifGate{
+      position:fixed;inset:0;background:#100E12;
+      z-index:99999;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      padding:32px;text-align:center
+    }
+    #notifGate .gate-icon{font-size:60px;margin-bottom:20px}
+    #notifGate .gate-title{
+      font-size:22px;font-weight:800;color:#F5D8E4;
+      margin-bottom:10px;letter-spacing:-0.5px
+    }
+    #notifGate .gate-desc{
+      font-size:14px;color:#4A3848;line-height:1.7;
+      max-width:280px;margin-bottom:28px
+    }
+    #gateLoading{display:flex;flex-direction:column;align-items:center;gap:12px}
+    #gateLoading .spinner{
+      width:28px;height:28px;border:3px solid #272228;
+      border-top-color:#C47088;border-radius:50%;
+      animation:spin 0.8s linear infinite
+    }
+    #gateLoading span{font-size:13px;color:#4A3848}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #gateAllow{display:none}
+    #gateDenied{display:none}
+    .gate-btn{
+      height:48px;padding:0 32px;border:none;border-radius:14px;
+      background:#C47088;color:#100E12;font-size:15px;font-weight:700;
+      cursor:pointer;transition:0.2s;letter-spacing:0.3px
+    }
+    .gate-btn:hover{background:#D4809A;transform:translateY(-1px)}
+    .gate-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+    .gate-denied-box{
+      background:#220C18;border:1px solid #3d1020;
+      border-radius:14px;padding:16px;max-width:300px;
+      margin-bottom:16px;text-align:left
+    }
+    .gate-denied-box p{font-size:13px;color:#E098B0;line-height:1.7}
+    .gate-denied-box strong{color:#F5D8E4}
+    .gate-reload-btn{
+      height:40px;padding:0 20px;
+      border:1px solid #C47088;border-radius:12px;
+      background:transparent;color:#C47088;
+      font-size:13px;font-weight:700;cursor:pointer;transition:0.2s
+    }
+    .gate-reload-btn:hover{background:#C47088;color:#100E12}
 
     /* ── Admin button ── */
     .admin-btn{
@@ -128,9 +178,8 @@
       border-radius:16px;padding:14px;transition:0.2s
     }
     .day-today{
-      background:#232028;
-      border-color:#C47088;
-      box-shadow:0 0 0 1px rgba(196,112,136,0.2);
+      background:#232028;border-color:#C47088;
+      box-shadow:0 0 0 1px rgba(196,112,136,0.2)
     }
     .top{
       position:relative;display:flex;
@@ -171,6 +220,43 @@
 </head>
 <body>
 
+<!-- ── Notification Gate (wajib sebelum akses app) ── -->
+<div id="notifGate">
+  <div class="gate-icon">🔔</div>
+  <div class="gate-title">Aktifkan Notifikasi</div>
+  <div class="gate-desc">
+    Izinkan notifikasi agar kamu mendapat pemberitahuan otomatis saat jadwal kerja diperbarui.
+  </div>
+
+  <!-- Loading: muncul saat OneSignal sedang init -->
+  <div id="gateLoading">
+    <div class="spinner"></div>
+    <span>Memeriksa notifikasi...</span>
+  </div>
+
+  <!-- Allow: muncul jika belum izinkan -->
+  <div id="gateAllow">
+    <button class="gate-btn" id="gateBtn" onclick="requestNotif()">
+      🔔 Izinkan Notifikasi
+    </button>
+  </div>
+
+  <!-- Denied: muncul jika diblokir browser -->
+  <div id="gateDenied">
+    <div class="gate-denied-box">
+      <p>
+        Notifikasi diblokir oleh browser kamu.<br><br>
+        Untuk mengaktifkan:<br>
+        Tap ikon 🔒 di address bar →
+        <strong>Izin situs</strong> →
+        aktifkan <strong>Notifikasi</strong> →
+        muat ulang halaman.
+      </p>
+    </div>
+    <button class="gate-reload-btn" onclick="location.reload()">🔄 Muat Ulang</button>
+  </div>
+</div>
+
 <button class="admin-btn hide" id="adminBtn" onclick="openLogin()">Login</button>
 
 <div class="login-overlay" id="loginOverlay">
@@ -188,12 +274,68 @@
   <div class="loading-msg">⏳ Memuat jadwal...</div>
 </div>
 
+<!-- ── OneSignal Init ── -->
+<script>
+  let _OS = null;
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    _OS = OneSignal;
+
+    await OneSignal.init({
+      appId:          "6cf4e1e8-da50-42d5-87ef-fea8da322a92",
+      safari_web_id:  "web.onesignal.auto.2b467c5d-2ccd-4e09-a57b-cb7ab9efd0c0",
+      notifyButton:   { enable: false },
+      serviceWorkerPath: "OneSignalSDKWorker.js",
+    });
+
+    // Sudah subscribe sebelumnya → langsung buka app
+    if (OneSignal.User.PushSubscription.optedIn) {
+      gateHide(); return;
+    }
+
+    // Browser sudah permanen blokir
+    if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+      gateShowDenied(); return;
+    }
+
+    // Perlu minta izin
+    gateShowAllow();
+  });
+
+  function gateHide() {
+    document.getElementById("notifGate").style.display = "none";
+  }
+  function gateShowAllow() {
+    document.getElementById("gateLoading").style.display = "none";
+    document.getElementById("gateAllow").style.display   = "block";
+  }
+  function gateShowDenied() {
+    document.getElementById("gateLoading").style.display = "none";
+    document.getElementById("gateDenied").style.display  = "block";
+  }
+
+  window.requestNotif = async function() {
+    if (!_OS) return;
+    const btn = document.getElementById("gateBtn");
+    btn.textContent = "Meminta izin...";
+    btn.disabled    = true;
+
+    const granted = await _OS.Notifications.requestPermission();
+    if (granted) {
+      gateHide();
+    } else {
+      gateShowDenied();
+    }
+  };
+</script>
+
+<!-- ── Firebase + App Logic ── -->
 <script type="module">
   import { initializeApp }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, onValue }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  // ⚠️ GANTI dengan firebaseConfig project Firebase BARU kamu
   const firebaseConfig = {
     apiKey:            "AIzaSyCoO_viP4_7CjDRJIK-f4wOfkgZgM-2ab8",
     authDomain:        "jadwal-alhambra.firebaseapp.com",
@@ -207,7 +349,6 @@
   const db   = getDatabase(initializeApp(firebaseConfig));
   const auth = getAuth();
 
-  // ── Cached DOM refs ───────────────────────────────────────
   const $app      = document.getElementById("app");
   const $adminBtn = document.getElementById("adminBtn");
   const $overlay  = document.getElementById("loginOverlay");
@@ -216,12 +357,10 @@
   const $loginBtn = document.getElementById("loginBtn");
   const $loginErr = document.getElementById("loginError");
 
-  // ── Constants ─────────────────────────────────────────────
   const HARI = ["SENIN","SELASA","RABU","KAMIS","JUMAT","SABTU","MINGGU"];
   const pad  = n => String(n).padStart(2, "0");
   const LABEL_FALLBACK = {S1:"SHIFT 1",S2:"SHIFT 2",S3:"SHIFT 3",S2O:"S2 (OFF 1)",FD:"FULL DAY"};
 
-  // ── Helpers ───────────────────────────────────────────────
   const formatTgl = d => `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
 
   function getTanggals(start) {
@@ -271,7 +410,7 @@
     const cards = HARI.map((hari, i) => {
       const kode    = arr[i] || "OFF";
       const isToday = tanggals[i] === todayStr;
-      return `<div class="day${isToday ? ' day-today' : ''}">
+      return `<div class="day${isToday ? " day-today" : ""}">
         <div class="top">
           <div class="day-name">${hari}</div>
           <div class="date">${tanggals[i]}</div>
@@ -295,11 +434,9 @@
     </div>`;
   }
 
-  // ── Render ────────────────────────────────────────────────
   function render({tanggalMulai, tampilan, shifts, jadwal}) {
     if (!jadwal || !shifts || !tanggalMulai) return;
     const tanggals = getTanggals(tanggalMulai);
-
     $app.innerHTML =
       `<div class="header">
         <div class="title">${tampilan?.judul || "Jadwal Kerja"}</div>
@@ -308,20 +445,17 @@
       Object.entries(jadwal)
         .map(([nama, arr]) => renderEmployee(nama, arr, tanggals, shifts))
         .join("");
-
     setupAccordion();
   }
 
   function setupAccordion() {
     const emps = [...document.querySelectorAll(".employee")];
     const hdr  = document.querySelector(".header");
-
     const reset = () => {
       emps.forEach(e => { e.classList.remove("active"); e.style.display = "block"; });
       hdr.style.display = "block";
       $adminBtn.classList.remove("hide");
     };
-
     emps.forEach(emp => {
       emp.querySelector(".employee-header").addEventListener("click", () => {
         const wasActive = emp.classList.contains("active");
@@ -336,7 +470,6 @@
     });
   }
 
-  // ── Firebase listener ─────────────────────────────────────
   onValue(ref(db, "config"), snap => {
     const cfg = snap.val();
     if (cfg) {
@@ -350,24 +483,19 @@
     $app.innerHTML = `<div class="loading-msg">Gagal memuat jadwal. Periksa koneksi internet.</div>`;
   });
 
-  // ── Auth ──────────────────────────────────────────────────
   window.openLogin = () => {
     $overlay.style.display = "flex";
     $loginErr.textContent  = "";
     $email.focus();
   };
-
   window.closeLogin = () => { $overlay.style.display = "none"; };
-
   window.loginAdmin = async () => {
     const email = $email.value.trim();
     const pass  = $password.value;
     if (!email || !pass) { $loginErr.textContent = "Email dan password wajib diisi."; return; }
-
     $loginBtn.textContent = "Logging in...";
     $loginBtn.disabled    = true;
     $loginErr.textContent = "";
-
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       window.location.href = "admin.html";
@@ -377,10 +505,8 @@
       $loginBtn.disabled    = false;
     }
   };
-
   $password.addEventListener("keydown", e => { if (e.key === "Enter") window.loginAdmin(); });
   $overlay.addEventListener("click",    e => { if (e.target === $overlay) window.closeLogin(); });
 </script>
 </body>
 </html>
-
