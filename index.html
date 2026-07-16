@@ -287,6 +287,12 @@
       safari_web_id:  "web.onesignal.auto.2b467c5d-2ccd-4e09-a57b-cb7ab9efd0c0",
       notifyButton:   { enable: false },
       serviceWorkerPath: "OneSignalSDKWorker.js",
+      // FIX: situs ini di-host di subfolder (mis. GitHub Pages "/jadwal-alhambra/"),
+      // bukan di root domain. Tanpa scope ini, registrasi service worker gagal
+      // secara diam-diam sehingga push subscription tidak pernah terbentuk
+      // walau izin browser sudah "granted".
+      // → Ganti "/jadwal-alhambra/" sesuai path deploy kamu yang sebenarnya.
+      serviceWorkerParam: { scope: "/jadwal-alhambra/" },
     });
 
     // Sudah subscribe sebelumnya → langsung buka app
@@ -510,3 +516,4 @@
 </script>
 </body>
 </html>
+
