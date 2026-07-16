@@ -347,8 +347,6 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ─── Firebase init ────────────────────────────────────────
-  // ⚠️ GANTI dengan firebaseConfig project Firebase BARU kamu
-  // PENTING: harus SAMA dengan config di index.html
   const app  = initializeApp({
     apiKey:            "AIzaSyCoO_viP4_7CjDRJIK-f4wOfkgZgM-2ab8",
     authDomain:        "jadwal-alhambra.firebaseapp.com",
@@ -356,10 +354,14 @@
     projectId:         "jadwal-alhambra",
     storageBucket:     "jadwal-alhambra.firebasestorage.app",
     messagingSenderId: "268642441303",
-    appId:             "1:268642441303:web:0e851cdd27daf4d1a36b12"
+    appId:             "1:268642441303:web:0e851cdd27daf4d1a36b12",
   });
   const db   = getDatabase(app);
   const auth = getAuth(app);
+
+  // ─── OneSignal config ─────────────────────────────────────
+  const ONESIGNAL_APP_ID  = "6cf4e1e8-da50-42d5-87ef-fea8da322a92";
+  const ONESIGNAL_API_KEY = "os_v2_app_nt2od2g2kbbnlb7p72unumrksljzphynhfpe6pnitptikudrt3zbb6kydo66qrvoie66hksvss7u7w3hszkzmdcv6eq75e6xxdw3ndq";
 
   // ─── Firebase ref shortcuts ───────────────────────────────
   const dbRef = path => ref(db, path);
@@ -430,11 +432,8 @@
   }
 
   // ─── Helpers ──────────────────────────────────────────────
-
-  /** Firebase arrays can come back as objects; normalize to array */
   const toArray = val => Array.isArray(val) ? val : Object.values(val);
 
-  /** Sync kedua grup checkbox hari libur dari state */
   function syncLiburCheckboxes() {
     document.querySelectorAll(".libur-bar-cb").forEach(cb => {
       cb.checked = hariLiburBar.includes(cb.value);
@@ -444,7 +443,6 @@
     });
   }
 
-  /** Baca customShiftsList langsung dari DOM (live state) */
   function readCustomShiftsFromDOM() {
     return [...document.querySelectorAll(".custom-shift-item")].map(item => ({
       key:   item.querySelector(".cs-key").value.trim().toUpperCase(),
@@ -453,21 +451,16 @@
     })).filter(s => s.key);
   }
 
-  /** Kembalikan daftar shift valid untuk radio button di Atur Jadwal */
   function getShiftOpts() {
-    // Prioritas: baca live dari DOM; fallback ke cached list
     const source = document.querySelectorAll(".custom-shift-item").length > 0
       ? readCustomShiftsFromDOM()
       : customShiftsList;
-
     const opts = source
       .filter(s => !FIXED_KEYS.has(s.key))
       .map(s => ({ key: s.key, label: s.key }));
-
     return [...opts, { key: "OFF", label: "OFF" }];
   }
 
-  /** Loading state wrapper untuk semua tombol simpan */
   async function withLoading(btnId, originalLabel, fn) {
     const btn = document.getElementById(btnId);
     btn.textContent = "Menyimpan...";
@@ -487,6 +480,32 @@
       alert("❌ Gagal menyimpan:\n" + e.message);
       btn.textContent = originalLabel;
       btn.disabled    = false;
+    }
+  }
+
+  // ─── Kirim notifikasi OneSignal ───────────────────────────
+  async function kirimNotifikasi() {
+    try {
+      const res = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Basic ${ONESIGNAL_API_KEY}`,
+        },
+        body: JSON.stringify({
+          app_id:             ONESIGNAL_APP_ID,
+          included_segments:  ["All"],
+          headings:           { en: "Jadwal Kerja Alhambra" },
+          contents:           { en: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!" },
+          url:                "https://anthrophic.github.io/jadwal-alhambra/",
+          chrome_web_icon:    "https://anthrophic.github.io/jadwal-alhambra/alhambra.png",
+        }),
+      });
+      const data = await res.json();
+      console.log("Notifikasi terkirim:", data);
+    } catch (e) {
+      // Jangan gagalkan save jadwal hanya karena notif error
+      console.warn("Notifikasi gagal dikirim:", e);
     }
   }
 
@@ -517,9 +536,7 @@
     const newList = [...document.querySelectorAll(".karyawan-input")]
       .map(inp => inp.value.trim().toUpperCase())
       .filter(Boolean);
-
     if (!newList.length) throw new Error("Minimal 1 nama karyawan harus diisi!");
-
     KARYAWAN = newList;
     await set(dbRef("config/karyawan"), KARYAWAN);
     renderKaryawan();
@@ -561,31 +578,26 @@
     const shiftOpts = getShiftOpts();
     document.getElementById("jadwalContainer").innerHTML = KARYAWAN.map(nama => {
       const savedArr = currentJadwal?.[nama];
-
       const rows = HARI_LIST.map((hari, hIdx) => {
         const savedVal = savedArr
           ? (Array.isArray(savedArr) ? savedArr[hIdx] : Object.values(savedArr)[hIdx])
           : null;
-
         const dots = [
           hariLiburBar.includes(hari)   ? `<span class="dot dot-bar"></span>`   : "",
           hariLiburSalon.includes(hari) ? `<span class="dot dot-salon"></span>` : "",
         ].join("");
-
         const radios = shiftOpts.map((s, sIdx) => {
           const id = `r_${nama}_${hIdx}_${sIdx}`;
           return `
             <input type="radio" name="r_${nama}_${hIdx}" id="${id}" value="${s.key}" ${savedVal === s.key ? "checked" : ""}>
             <label for="${id}">${s.label}</label>`;
         }).join("");
-
         return `
           <div class="row">
             <div class="hari-lbl">${hari}${dots}</div>
             <div class="shift-group">${radios}</div>
           </div>`;
       }).join("");
-
       return `
         <div class="card">
           <div class="card-topbar">${nama}</div>
@@ -597,15 +609,12 @@
   // ─── Save: Jam Shift ──────────────────────────────────────
   window.saveJam = () => withLoading("saveJamBtn", "SIMPAN JAM SHIFT", async () => {
     const items = readCustomShiftsFromDOM();
-
-    // Validasi duplikat kode
-    const seen = new Set();
+    const seen  = new Set();
     for (const { key } of items) {
       if (!key) continue;
       if (seen.has(key)) throw new Error("Ada kode shift yang duplikat! Pastikan setiap kode unik.");
       seen.add(key);
     }
-
     const shifts = {};
     let colorIdx = 0;
     for (const { key, label, jam } of items) {
@@ -613,10 +622,7 @@
       const c = CUSTOM_COLORS[colorIdx++ % CUSTOM_COLORS.length];
       shifts[key] = { label: label || key, jam, bg: c.bg, color: c.color };
     }
-
-    customShiftsList = Object.entries(shifts)
-      .map(([key, s]) => ({ key, label: s.label, jam: s.jam }));
-
+    customShiftsList = Object.entries(shifts).map(([key, s]) => ({ key, label: s.label, jam: s.jam }));
     await set(dbRef("config/shifts"), shifts);
     renderCustomShifts();
     renderJadwal();
@@ -640,7 +646,7 @@
     renderJadwal();
   });
 
-  // ─── Save: Jadwal ─────────────────────────────────────────
+  // ─── Save: Jadwal + Kirim Notifikasi ─────────────────────
   window.saveJadwal = () => withLoading("saveJadwalBtn", "SIMPAN JADWAL", async () => {
     const jadwal = Object.fromEntries(
       KARYAWAN.map(nama => [
@@ -652,6 +658,9 @@
     );
     currentJadwal = jadwal;
     await set(dbRef("config/jadwal"), jadwal);
+
+    // ── Otomatis kirim notifikasi ke semua user ──
+    await kirimNotifikasi();
   });
 
   // ─── Logout ───────────────────────────────────────────────
@@ -672,4 +681,3 @@
 
 </body>
 </html>
-
