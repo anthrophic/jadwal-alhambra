@@ -287,38 +287,18 @@
 <script>
   let _OS = null;
 
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    _OS = OneSignal;
-
-    await OneSignal.init({
-      appId:          "6cf4e1e8-da50-42d5-87ef-fea8da322a92",
-      safari_web_id:  "web.onesignal.auto.2b467c5d-2ccd-4e09-a57b-cb7ab9efd0c0",
-      notifyButton:   { enable: false },
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-    });
-
-    // Cek langsung dari browser API — lebih reliable dari OneSignal state
-    const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-
-    if (perm === "granted") { gateHide();       return; }
-    if (perm === "denied")  { gateShowDenied(); return; }
-
-    // Belum ada keputusan → tampilkan tombol izin
-    gateShowAllow();
-  });
-
+  // ── Fungsi gate ───────────────────────────────────────────
   function gateHide() {
     document.getElementById("notifGate").style.display = "none";
   }
+
   function gateShowAllow() {
     document.getElementById("gateLoading").style.display = "none";
     document.getElementById("gateAllow").style.display   = "block";
   }
-  function gateShowDenied() {
-    // Deteksi perangkat untuk panduan yang tepat
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+  function gateShowDenied() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const steps = isIOS
       ? [
           "Tutup dan buka ulang <b>Safari</b>",
@@ -348,27 +328,53 @@
     document.getElementById("gateDenied").style.display  = "block";
   }
 
+  // ── Cek izin LANGSUNG tanpa tunggu OneSignal ──────────────
+  // Ini yang menentukan gate tampil apa — tidak bergantung koneksi/loading OneSignal
+  (function checkPermNow() {
+    if (typeof Notification === "undefined") { gateHide(); return; }
+    const perm = Notification.permission;
+    if      (perm === "granted") gateHide();
+    else if (perm === "denied")  gateShowDenied();
+    else                         gateShowAllow();   // "default" → belum pernah diminta
+  })();
+
+  // ── OneSignal init di background (untuk push subscription) ─
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    _OS = OneSignal;
+    try {
+      await OneSignal.init({
+        appId:             "6cf4e1e8-da50-42d5-87ef-fea8da322a92",
+        safari_web_id:     "web.onesignal.auto.2b467c5d-2ccd-4e09-a57b-cb7ab9efd0c0",
+        notifyButton:      { enable: false },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+      });
+    } catch(e) {
+      console.warn("OneSignal init error:", e);
+    }
+  });
+
+  // ── Tombol "Izinkan Notifikasi" ───────────────────────────
   window.requestNotif = async function() {
-    if (!_OS) return;
     const btn = document.getElementById("gateBtn");
     btn.textContent = "Meminta izin...";
     btn.disabled    = true;
 
     try {
-      await _OS.Notifications.requestPermission();
+      // Pakai OneSignal kalau sudah siap, fallback ke native browser API
+      if (_OS) {
+        await _OS.Notifications.requestPermission();
+      } else {
+        await Notification.requestPermission();
+      }
     } catch(e) {
       console.warn("requestPermission error:", e);
     }
 
-    // Cek status dari browser langsung — bukan dari return value OneSignal
     const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-
-    if (perm === "granted") {
-      gateHide();
-    } else if (perm === "denied") {
-      gateShowDenied();
-    } else {
-      // User dismiss popup tanpa pilih → reset tombol
+    if      (perm === "granted") gateHide();
+    else if (perm === "denied")  gateShowDenied();
+    else {
       btn.textContent = "🔔 Izinkan Notifikasi";
       btn.disabled    = false;
     }
