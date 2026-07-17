@@ -359,10 +359,6 @@
   const db   = getDatabase(app);
   const auth = getAuth(app);
 
-  // ─── OneSignal config ─────────────────────────────────────
-  const ONESIGNAL_APP_ID  = "eaf3047c-f168-451a-949c-0aec87f7bf7f";
-  const ONESIGNAL_API_KEY = "os_v2_app_5lzqi7hrnbcrvfe4blwip557p5rthgu2dxseqgfa762jyp37tcjvnwo6x27g5olz6h4uo5leuxhzndicb7wy55qdxi3eliz7p7oa4fy";
-
   // ─── Firebase ref shortcuts ───────────────────────────────
   const dbRef = path => ref(db, path);
 
@@ -483,19 +479,25 @@
     }
   }
 
-  // ─── Kirim notifikasi OneSignal ───────────────────────────
+  // ─── Kirim notifikasi ────────────────────────────────────
+  // 1) Tulis ke Firebase → notif muncul kalau app sedang terbuka
+  // 2) Panggil GAS → OneSignal kirim push notification ke background
   async function kirimNotifikasi() {
+    // Firebase in-app notification
     try {
-      // no-cors: browser tetap kirim request ke GAS,
-      // GAS tetap execute & kirim notif ke OneSignal
-      // (response tidak bisa dibaca, tapi tidak perlu dibaca)
+      await set(dbRef("config/lastNotif"), {
+        timestamp: Date.now(),
+        pesan:     "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
+      });
+    } catch(e) { console.warn("Firebase notif error:", e); }
+
+    // OneSignal push notification via GAS (no-cors: request tetap terkirim)
+    try {
       await fetch(
         "https://script.google.com/macros/s/AKfycbwNJTqau1z6eYaSTGEOCuD7v38ZAEhBx0U3a_v_n3N9Tv8Ke5FTvjQ5emp5d3qGbQAYZg/exec",
         { mode: "no-cors" }
       );
-    } catch(e) {
-      console.warn("Notifikasi error:", e);
-    }
+    } catch(e) { console.warn("GAS notif error:", e); }
   }
 
   // ─── Render: Karyawan ─────────────────────────────────────
