@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Jadwal">
   <meta name="theme-color" content="#100E12">
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{
@@ -204,8 +205,10 @@
   <div class="loading-msg">⏳ Memuat jadwal...</div>
 </div>
 
-<!-- Gate logic (native browser API, tanpa OneSignal) -->
+<!-- Gate logic + OneSignal -->
 <script>
+  let _OS = null;
+
   function gateHide() { document.getElementById("notifGate").style.display = "none"; }
 
   function gateShowAllow() {
@@ -225,7 +228,7 @@
     document.getElementById("gateDenied").style.display = "block";
   }
 
-  // Cek izin langsung tanpa library apapun
+  // Cek izin langsung — tidak perlu tunggu OneSignal
   (function() {
     if (typeof Notification === "undefined") { gateHide(); return; }
     const p = Notification.permission;
@@ -234,18 +237,33 @@
     else                      gateShowAllow();
   })();
 
+  // OneSignal init di background untuk push subscription
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    _OS = OneSignal;
+    try {
+      await OneSignal.init({
+        appId:             "1d780663-9c51-422c-b416-4085b6f14adf",
+        notifyButton:      { enable: false },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+      });
+    } catch(e) { console.warn("OneSignal init:", e); }
+  });
+
   window.requestNotif = async function() {
     const btn = document.getElementById("gateBtn");
     btn.textContent = "Meminta izin...";
     btn.disabled = true;
-    try { await Notification.requestPermission(); } catch(e) {}
+    try {
+      if (_OS) await _OS.Notifications.requestPermission();
+      else     await Notification.requestPermission();
+    } catch(e) {}
     const p = typeof Notification !== "undefined" ? Notification.permission : "default";
     if      (p === "granted") gateHide();
     else if (p === "denied")  gateShowDenied();
     else { btn.textContent = "🔔 Izinkan Notifikasi"; btn.disabled = false; }
   };
 
-  // Toast helper (dipanggil dari module script)
   window.showToast = function(pesan) {
     const t = document.getElementById("notifToast");
     t.textContent = pesan;
