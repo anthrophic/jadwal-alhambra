@@ -360,8 +360,8 @@
   const auth = getAuth(app);
 
   // ─── OneSignal config ─────────────────────────────────────
-  const ONESIGNAL_APP_ID  = "6cf4e1e8-da50-42d5-87ef-fea8da322a92";
-  const ONESIGNAL_API_KEY = "os_v2_app_nt2od2g2kbbnlb7p72unumrksljzphynhfpe6pnitptikudrt3zbb6kydo66qrvoie66hksvss7u7w3hszkzmdcv6eq75e6xxdw3ndq";
+  const ONESIGNAL_APP_ID  = "eaf3047c-f168-451a-949c-0aec87f7bf7f";
+  const ONESIGNAL_API_KEY = "os_v2_app_5lzqi7hrnbcrvfe4blwip557p5rthgu2dxseqgfa762jyp37tcjvnwo6x27g5olz6h4uo5leuxhzndicb7wy55qdxi3eliz7p7oa4fy";
 
   // ─── Firebase ref shortcuts ───────────────────────────────
   const dbRef = path => ref(db, path);
@@ -486,15 +486,15 @@
   // ─── Kirim notifikasi OneSignal ───────────────────────────
   async function kirimNotifikasi() {
     try {
-      const res = await fetch(
+      // no-cors: browser tetap kirim request ke GAS,
+      // GAS tetap execute & kirim notif ke OneSignal
+      // (response tidak bisa dibaca, tapi tidak perlu dibaca)
+      await fetch(
         "https://script.google.com/macros/s/AKfycbwNJTqau1z6eYaSTGEOCuD7v38ZAEhBx0U3a_v_n3N9Tv8Ke5FTvjQ5emp5d3qGbQAYZg/exec",
-        { redirect: "follow" }
+        { mode: "no-cors" }
       );
-      const data = await res.json();
-      // ── DEBUG SEMENTARA: hapus alert ini setelah notif berfungsi ──
-      alert("Response:\n" + JSON.stringify(data, null, 2));
-    } catch (e) {
-      alert("❌ Gagal:\n" + e.message);
+    } catch(e) {
+      console.warn("Notifikasi error:", e);
     }
   }
 
@@ -670,4 +670,3 @@
 
 </body>
 </html>
-
