@@ -502,10 +502,11 @@
         }),
       });
       const data = await res.json();
-      console.log("Notifikasi terkirim:", data);
+      // ── DEBUG SEMENTARA: hapus alert ini setelah notif berfungsi ──
+      alert("OneSignal response:\n" + JSON.stringify(data, null, 2));
     } catch (e) {
-      // Jangan gagalkan save jadwal hanya karena notif error
-      console.warn("Notifikasi gagal dikirim:", e);
+      // ── DEBUG SEMENTARA ──
+      alert("❌ Fetch gagal:\n" + e.message);
     }
   }
 
