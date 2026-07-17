@@ -486,27 +486,15 @@
   // ─── Kirim notifikasi OneSignal ───────────────────────────
   async function kirimNotifikasi() {
     try {
-      const res = await fetch("https://onesignal.com/api/v1/notifications", {
-        method: "POST",
-        headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Basic ${ONESIGNAL_API_KEY}`,
-        },
-        body: JSON.stringify({
-          app_id:             ONESIGNAL_APP_ID,
-          included_segments:  ["All"],
-          headings:           { en: "Jadwal Kerja Alhambra" },
-          contents:           { en: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!" },
-          url:                "https://anthrophic.github.io/jadwal-alhambra/",
-          chrome_web_icon:    "https://anthrophic.github.io/jadwal-alhambra/alhambra.png",
-        }),
-      });
+      const res = await fetch(
+        "https://script.google.com/macros/s/AKfycbwNJTqau1z6eYaSTGEOCuD7v38ZAEhBx0U3a_v_n3N9Tv8Ke5FTvjQ5emp5d3qGbQAYZg/exec",
+        { redirect: "follow" }
+      );
       const data = await res.json();
       // ── DEBUG SEMENTARA: hapus alert ini setelah notif berfungsi ──
-      alert("OneSignal response:\n" + JSON.stringify(data, null, 2));
+      alert("Response:\n" + JSON.stringify(data, null, 2));
     } catch (e) {
-      // ── DEBUG SEMENTARA ──
-      alert("❌ Fetch gagal:\n" + e.message);
+      alert("❌ Gagal:\n" + e.message);
     }
   }
 
@@ -682,3 +670,4 @@
 
 </body>
 </html>
+
