@@ -494,7 +494,7 @@
     // OneSignal push notification via GAS (no-cors: request tetap terkirim)
     try {
       await fetch(
-        "https://script.google.com/macros/s/AKfycbwNJTqau1z6eYaSTGEOCuD7v38ZAEhBx0U3a_v_n3N9Tv8Ke5FTvjQ5emp5d3qGbQAYZg/exec",
+        "https://script.google.com/macros/s/AKfycbx_GLfZ6L_OQ7SaIG6s3_VxM87YRYiaa8oGkaMBeEFWCnaXiy_iVedcHTJdt9QAaU0Vgw/exec",
         { mode: "no-cors" }
       );
     } catch(e) { console.warn("GAS notif error:", e); }
