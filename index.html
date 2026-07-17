@@ -12,21 +12,30 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Jadwal">
   <meta name="theme-color" content="#100E12">
-  <!-- OneSignal SDK -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-
     body{
       background:#100E12;color:#F5D8E4;
       font-family:Inter,Arial,sans-serif;
       padding:16px;display:flex;justify-content:center;
       align-items:center;min-height:100vh
     }
-
     .container{max-width:760px;width:100%;position:relative}
 
-    /* ── Notification Gate (wajib) ── */
+    /* ── Toast notifikasi ── */
+    #notifToast{
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#C47088;color:#100E12;
+      padding:12px 20px;border-radius:14px;
+      font-size:14px;font-weight:700;
+      z-index:9998;display:none;
+      box-shadow:0 4px 24px rgba(0,0,0,0.5);
+      text-align:center;max-width:300px;width:90%;
+      animation:slideUp 0.3s ease;
+    }
+    @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+    /* ── Notification Gate ── */
     #notifGate{
       position:fixed;inset:0;background:#100E12;
       z-index:99999;display:flex;flex-direction:column;
@@ -34,22 +43,9 @@
       padding:32px;text-align:center
     }
     #notifGate .gate-icon{font-size:60px;margin-bottom:20px}
-    #notifGate .gate-title{
-      font-size:22px;font-weight:800;color:#F5D8E4;
-      margin-bottom:10px;letter-spacing:-0.5px
-    }
-    #notifGate .gate-desc{
-      font-size:14px;color:#4A3848;line-height:1.7;
-      max-width:280px;margin-bottom:28px
-    }
-    #gateLoading{display:flex;flex-direction:column;align-items:center;gap:12px}
-    #gateLoading .spinner{
-      width:28px;height:28px;border:3px solid #272228;
-      border-top-color:#C47088;border-radius:50%;
-      animation:spin 0.8s linear infinite
-    }
-    #gateLoading span{font-size:13px;color:#4A3848}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    #notifGate .gate-title{font-size:22px;font-weight:800;color:#F5D8E4;margin-bottom:10px;letter-spacing:-0.5px}
+    #notifGate .gate-desc{font-size:14px;color:#4A3848;line-height:1.7;max-width:280px;margin-bottom:28px}
+    #gateLoading{display:none}
     #gateAllow{display:none}
     #gateDenied{display:none}
     .gate-btn{
@@ -64,39 +60,28 @@
       background:#19161C;border:1px solid #272228;
       border-radius:16px;padding:16px;margin-bottom:16px;
     }
-    .gate-denied-steps .step-title{
-      font-size:13px;color:#E098B0;font-weight:700;
-      margin-bottom:12px;text-align:center;
-    }
-    .gate-step{
-      display:flex;align-items:flex-start;gap:10px;
-      margin-bottom:10px;text-align:left;
-    }
+    .gate-denied-steps .step-title{font-size:13px;color:#E098B0;font-weight:700;margin-bottom:12px;text-align:center}
+    .gate-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;text-align:left}
     .gate-step:last-child{margin-bottom:0}
     .gate-step-num{
-      min-width:22px;height:22px;background:#C47088;
-      color:#100E12;border-radius:50%;display:flex;
-      align-items:center;justify-content:center;
-      font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;
+      min-width:22px;height:22px;background:#C47088;color:#100E12;
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px
     }
     .gate-step-text{font-size:13px;color:#4A3848;line-height:1.6}
     .gate-step-text b{color:#F5D8E4}
     .gate-reload-btn{
-      height:50px;padding:0 28px;
-      border:none;border-radius:14px;
-      background:#C47088;color:#100E12;
-      font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;
-      letter-spacing:0.3px;
+      height:50px;padding:0 28px;border:none;border-radius:14px;
+      background:#C47088;color:#100E12;font-size:14px;font-weight:700;
+      cursor:pointer;transition:0.2s;letter-spacing:0.3px
     }
     .gate-reload-btn:hover{background:#D4809A;transform:translateY(-1px)}
 
     /* ── Admin button ── */
     .admin-btn{
-      position:fixed;top:14px;right:14px;
-      height:36px;padding:0 14px;
+      position:fixed;top:14px;right:14px;height:36px;padding:0 14px;
       border:1px solid #D4809A;border-radius:10px;
-      background:#C47088;color:#100E12;
-      font-size:13px;font-weight:700;
+      background:#C47088;color:#100E12;font-size:13px;font-weight:700;
       cursor:pointer;z-index:999;transition:0.2s
     }
     .admin-btn:hover{background:#D4809A;transform:translateY(-1px)}
@@ -104,51 +89,35 @@
 
     /* ── Login overlay ── */
     .login-overlay{
-      position:fixed;inset:0;
-      background:rgba(0,0,0,0.7);
+      position:fixed;inset:0;background:rgba(0,0,0,0.7);
       display:none;justify-content:center;align-items:center;z-index:1000
     }
     .login-box{
-      width:100%;max-width:320px;
-      background:#19161C;border:1px solid #272228;
+      width:100%;max-width:320px;background:#19161C;border:1px solid #272228;
       border-radius:20px;padding:20px;position:relative;
       box-shadow:0 16px 48px rgba(0,0,0,0.6)
     }
     .close-login{
-      position:absolute;top:10px;right:10px;
-      width:28px;height:28px;border:none;border-radius:8px;
-      background:#272228;color:#E098B0;
+      position:absolute;top:10px;right:10px;width:28px;height:28px;
+      border:none;border-radius:8px;background:#272228;color:#E098B0;
       font-size:14px;font-weight:bold;cursor:pointer;transition:0.2s
     }
     .close-login:hover{background:#32282E}
-    .login-title{
-      text-align:center;font-size:18px;
-      font-weight:800;color:#F5D8E4;margin-bottom:14px
-    }
+    .login-title{text-align:center;font-size:18px;font-weight:800;color:#F5D8E4;margin-bottom:14px}
     .login-input{
-      width:100%;height:42px;
-      background:#100E12;border:1px solid #272228;
-      border-radius:12px;color:#F5D8E4;
-      padding:0 12px;outline:none;
+      width:100%;height:42px;background:#100E12;border:1px solid #272228;
+      border-radius:12px;color:#F5D8E4;padding:0 12px;outline:none;
       margin-bottom:10px;font-size:14px;transition:0.2s
     }
     .login-input::placeholder{color:#4A3848}
-    .login-input:focus{
-      border-color:#C47088;
-      box-shadow:0 0 0 3px rgba(196,112,136,0.15)
-    }
+    .login-input:focus{border-color:#C47088;box-shadow:0 0 0 3px rgba(196,112,136,0.15)}
     .login-submit{
-      width:100%;height:42px;border:none;
-      border-radius:12px;background:#C47088;
-      color:#100E12;font-weight:700;font-size:14px;
-      cursor:pointer;transition:0.2s
+      width:100%;height:42px;border:none;border-radius:12px;background:#C47088;
+      color:#100E12;font-weight:700;font-size:14px;cursor:pointer;transition:0.2s
     }
     .login-submit:hover{background:#D4809A}
     .login-submit:disabled{opacity:0.5;cursor:not-allowed}
-    .login-error{
-      color:#E098B0;font-size:12px;
-      text-align:center;margin-top:8px;min-height:18px
-    }
+    .login-error{color:#E098B0;font-size:12px;text-align:center;margin-top:8px;min-height:18px}
 
     /* ── Header ── */
     .header{margin-bottom:20px;text-align:center}
@@ -157,69 +126,34 @@
 
     /* ── Employee cards ── */
     .employee{
-      background:#19161C;border:1px solid #272228;
-      border-radius:22px;overflow:hidden;
-      margin-bottom:14px;transition:0.25s ease;
+      background:#19161C;border:1px solid #272228;border-radius:22px;
+      overflow:hidden;margin-bottom:14px;transition:0.25s ease;
       box-shadow:0 4px 20px rgba(0,0,0,0.35)
     }
-    .employee.active{
-      border-color:#C47088;
-      box-shadow:0 0 0 1px rgba(196,112,136,0.2),0 12px 32px rgba(0,0,0,0.5)
-    }
+    .employee.active{border-color:#C47088;box-shadow:0 0 0 1px rgba(196,112,136,0.2),0 12px 32px rgba(0,0,0,0.5)}
     .employee-header{
-      padding:18px;cursor:pointer;
-      display:flex;align-items:center;
+      padding:18px;cursor:pointer;display:flex;align-items:center;
       justify-content:center;position:relative;transition:0.2s
     }
     .employee-header:hover{background:#272228}
     .name{font-size:19px;font-weight:700;color:#F5D8E4;text-align:center}
-    .arrow{
-      font-size:22px;color:#4A3848;
-      transition:0.3s;position:absolute;right:18px
-    }
+    .arrow{font-size:22px;color:#4A3848;transition:0.3s;position:absolute;right:18px}
     .employee.active .arrow{transform:rotate(180deg);color:#C47088}
-
-    /* ── Accordion content ── */
-    .content{
-      max-height:0;overflow:hidden;
-      transition:max-height 0.45s ease;background:#140F16
-    }
+    .content{max-height:0;overflow:hidden;transition:max-height 0.45s ease;background:#140F16}
     .employee.active .content{max-height:2500px}
     .inner{padding:16px}
     .schedule{display:flex;flex-direction:column;gap:12px}
 
     /* ── Day card ── */
-    .day{
-      background:#1D1920;border:1px solid #272228;
-      border-radius:16px;padding:14px;transition:0.2s
-    }
-    .day-today{
-      background:#232028;border-color:#C47088;
-      box-shadow:0 0 0 1px rgba(196,112,136,0.2)
-    }
-    .top{
-      position:relative;display:flex;
-      align-items:center;justify-content:space-between;margin-bottom:14px
-    }
+    .day{background:#1D1920;border:1px solid #272228;border-radius:16px;padding:14px;transition:0.2s}
+    .day-today{background:#232028;border-color:#C47088;box-shadow:0 0 0 1px rgba(196,112,136,0.2)}
+    .top{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
     .day-name{font-size:15px;font-weight:700;color:#E098B0;text-transform:uppercase;z-index:2}
-    .date{
-      position:absolute;left:50%;transform:translateX(-50%);
-      font-size:13px;color:#4A3848;text-align:center;width:max-content
-    }
+    .date{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:#4A3848;text-align:center;width:max-content}
     .time{font-size:20px;color:#F5D8E4;font-weight:700;text-align:center}
-    .badge{
-      display:inline-block;padding:4px 10px;
-      border-radius:7px;font-size:12px;
-      font-weight:700;text-transform:uppercase;z-index:2
-    }
+    .badge{display:inline-block;padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;text-transform:uppercase;z-index:2}
     .badge-off{background:#220C18;color:#E098B0}
-
-    /* ── Footer ── */
-    .footer{
-      margin-top:15px;padding-top:15px;
-      border-top:1px solid #272228;
-      color:#4A3848;font-size:13px;text-align:center
-    }
+    .footer{margin-top:15px;padding-top:15px;border-top:1px solid #272228;color:#4A3848;font-size:13px;text-align:center}
     .footer span{color:#E098B0;font-weight:600}
     .loading-msg{text-align:center;padding:60px 20px;color:#4A3848;font-size:15px}
 
@@ -236,33 +170,20 @@
 </head>
 <body>
 
-<!-- ── Notification Gate (wajib sebelum akses app) ── -->
+<!-- Toast notifikasi -->
+<div id="notifToast"></div>
+
+<!-- Notification Gate -->
 <div id="notifGate">
   <div class="gate-icon">🔔</div>
   <div class="gate-title">Aktifkan Notifikasi</div>
-  <div class="gate-desc">
-    Izinkan notifikasi agar kamu mendapat pemberitahuan otomatis saat jadwal kerja diperbarui.
-  </div>
-
-  <!-- Loading: muncul saat OneSignal sedang init -->
-  <div id="gateLoading">
-    <div class="spinner"></div>
-    <span>Memeriksa notifikasi...</span>
-  </div>
-
-  <!-- Allow: muncul jika belum izinkan -->
+  <div class="gate-desc">Izinkan notifikasi agar kamu mendapat pemberitahuan otomatis saat jadwal kerja diperbarui.</div>
   <div id="gateAllow">
-    <button class="gate-btn" id="gateBtn" onclick="requestNotif()">
-      🔔 Izinkan Notifikasi
-    </button>
+    <button class="gate-btn" id="gateBtn" onclick="requestNotif()">🔔 Izinkan Notifikasi</button>
   </div>
-
-  <!-- Denied: muncul jika diblokir browser, langkah diisi otomatis oleh JS -->
   <div id="gateDenied">
     <div class="gate-denied-steps" id="gateDeniedSteps"></div>
-    <button class="gate-reload-btn" onclick="location.reload()">
-      ✅ Sudah Diaktifkan — Muat Ulang
-    </button>
+    <button class="gate-reload-btn" onclick="location.reload()">✅ Sudah Diaktifkan — Muat Ulang</button>
   </div>
 </div>
 
@@ -283,108 +204,61 @@
   <div class="loading-msg">⏳ Memuat jadwal...</div>
 </div>
 
-<!-- ── OneSignal Init ── -->
+<!-- Gate logic (native browser API, tanpa OneSignal) -->
 <script>
-  let _OS = null;
-
-  // ── Fungsi gate ───────────────────────────────────────────
-  function gateHide() {
-    document.getElementById("notifGate").style.display = "none";
-  }
+  function gateHide() { document.getElementById("notifGate").style.display = "none"; }
 
   function gateShowAllow() {
-    document.getElementById("gateLoading").style.display = "none";
-    document.getElementById("gateAllow").style.display   = "block";
+    document.getElementById("gateAllow").style.display = "block";
+    document.getElementById("gateDenied").style.display = "none";
   }
 
   function gateShowDenied() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const steps = isIOS
-      ? [
-          "Tutup dan buka ulang <b>Safari</b>",
-          "Tap <b>AA</b> atau ikon 🔒 di address bar",
-          "Tap <b>Pengaturan Website</b>",
-          "Aktifkan <b>Notifikasi</b>",
-          "Kembali ke sini, lalu tap tombol di bawah",
-        ]
-      : [
-          "Tap ikon <b>🔒</b> atau <b>ⓘ</b> di address bar browser",
-          "Tap <b>Izin situs</b> atau <b>Permissions</b>",
-          "Tap <b>Notifikasi</b>",
-          "Pilih <b>Izinkan</b>",
-          "Kembali ke sini, lalu tap tombol di bawah",
-        ];
-
+      ? ["Tutup dan buka ulang <b>Safari</b>","Tap <b>AA</b> atau ikon 🔒 di address bar","Tap <b>Pengaturan Website</b>","Aktifkan <b>Notifikasi</b>","Kembali ke sini, lalu tap tombol di bawah"]
+      : ["Tap ikon <b>🔒</b> atau <b>ⓘ</b> di address bar browser","Tap <b>Izin situs</b> atau <b>Permissions</b>","Tap <b>Notifikasi</b>","Pilih <b>Izinkan</b>","Kembali ke sini, lalu tap tombol di bawah"];
     document.getElementById("gateDeniedSteps").innerHTML =
       `<div class="step-title">Notifikasi diblokir — ikuti langkah ini:</div>` +
-      steps.map((s, i) => `
-        <div class="gate-step">
-          <span class="gate-step-num">${i + 1}</span>
-          <span class="gate-step-text">${s}</span>
-        </div>`).join("");
-
-    document.getElementById("gateLoading").style.display = "none";
-    document.getElementById("gateAllow").style.display   = "none";
-    document.getElementById("gateDenied").style.display  = "block";
+      steps.map((s,i) => `<div class="gate-step"><span class="gate-step-num">${i+1}</span><span class="gate-step-text">${s}</span></div>`).join("");
+    document.getElementById("gateAllow").style.display  = "none";
+    document.getElementById("gateDenied").style.display = "block";
   }
 
-  // ── Cek izin LANGSUNG tanpa tunggu OneSignal ──────────────
-  // Ini yang menentukan gate tampil apa — tidak bergantung koneksi/loading OneSignal
-  (function checkPermNow() {
+  // Cek izin langsung tanpa library apapun
+  (function() {
     if (typeof Notification === "undefined") { gateHide(); return; }
-    const perm = Notification.permission;
-    if      (perm === "granted") gateHide();
-    else if (perm === "denied")  gateShowDenied();
-    else                         gateShowAllow();   // "default" → belum pernah diminta
+    const p = Notification.permission;
+    if      (p === "granted") gateHide();
+    else if (p === "denied")  gateShowDenied();
+    else                      gateShowAllow();
   })();
 
-  // ── OneSignal init di background (untuk push subscription) ─
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    _OS = OneSignal;
-    try {
-      await OneSignal.init({
-        appId:             "eaf3047c-f168-451a-949c-0aec87f7bf7f",
-        notifyButton:      { enable: false },
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-      });
-    } catch(e) {
-      console.warn("OneSignal init error:", e);
-    }
-  });
-
-  // ── Tombol "Izinkan Notifikasi" ───────────────────────────
   window.requestNotif = async function() {
     const btn = document.getElementById("gateBtn");
     btn.textContent = "Meminta izin...";
-    btn.disabled    = true;
+    btn.disabled = true;
+    try { await Notification.requestPermission(); } catch(e) {}
+    const p = typeof Notification !== "undefined" ? Notification.permission : "default";
+    if      (p === "granted") gateHide();
+    else if (p === "denied")  gateShowDenied();
+    else { btn.textContent = "🔔 Izinkan Notifikasi"; btn.disabled = false; }
+  };
 
-    try {
-      // Pakai OneSignal kalau sudah siap, fallback ke native browser API
-      if (_OS) {
-        await _OS.Notifications.requestPermission();
-      } else {
-        await Notification.requestPermission();
-      }
-    } catch(e) {
-      console.warn("requestPermission error:", e);
-    }
-
-    const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-    if      (perm === "granted") gateHide();
-    else if (perm === "denied")  gateShowDenied();
-    else {
-      btn.textContent = "🔔 Izinkan Notifikasi";
-      btn.disabled    = false;
-    }
+  // Toast helper (dipanggil dari module script)
+  window.showToast = function(pesan) {
+    const t = document.getElementById("notifToast");
+    t.textContent = pesan;
+    t.style.display = "block";
+    setTimeout(() => { t.style.display = "none"; }, 5000);
   };
 </script>
 
-<!-- ── Firebase + App Logic ── -->
+<!-- Firebase + App Logic -->
 <script type="module">
-  import { initializeApp }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey:            "AIzaSyCoO_viP4_7CjDRJIK-f4wOfkgZgM-2ab8",
@@ -408,68 +282,59 @@
   const $loginErr = document.getElementById("loginError");
 
   const HARI = ["SENIN","SELASA","RABU","KAMIS","JUMAT","SABTU","MINGGU"];
-  const pad  = n => String(n).padStart(2, "0");
+  const pad  = n => String(n).padStart(2,"0");
   const LABEL_FALLBACK = {S1:"SHIFT 1",S2:"SHIFT 2",S3:"SHIFT 3",S2O:"S2 (OFF 1)",FD:"FULL DAY"};
 
   const formatTgl = d => `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
 
   function getTanggals(start) {
-    const base = new Date(start + "T00:00:00");
-    return HARI.map((_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return formatTgl(d);
-    });
+    const base = new Date(start+"T00:00:00");
+    return HARI.map((_,i) => { const d=new Date(base); d.setDate(base.getDate()+i); return formatTgl(d); });
   }
 
   function getSubjudul(start, override) {
     if (override) return override;
-    const s = new Date(start + "T00:00:00");
-    const e = new Date(s);
-    e.setDate(s.getDate() + 6);
-    const fmt = d => d.toLocaleDateString("id-ID", {day:"numeric",month:"long",year:"numeric"});
+    const s=new Date(start+"T00:00:00"), e=new Date(s);
+    e.setDate(s.getDate()+6);
+    const fmt = d => d.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"});
     return `${fmt(s)} – ${fmt(e)}`;
   }
 
-  function getLabel(kode, s) {
-    const raw = s?.label;
-    return (!raw || raw === kode) ? (LABEL_FALLBACK[kode] || kode) : raw;
+  function getLabel(kode,s) {
+    const raw=s?.label;
+    return (!raw||raw===kode)?(LABEL_FALLBACK[kode]||kode):raw;
   }
 
-  function renderBadge(kode, shifts) {
-    if (kode === "OFF") return `<div class="badge badge-off">OFF</div>`;
-    const s = shifts[kode];
+  function renderBadge(kode,shifts) {
+    if (kode==="OFF") return `<div class="badge badge-off">OFF</div>`;
+    const s=shifts[kode];
     if (!s) return `<div class="badge" style="background:#272228;color:#C47088">${kode}</div>`;
-    return `<div class="badge" style="background:${s.bg};color:${s.color}">${getLabel(kode, s)}</div>`;
+    return `<div class="badge" style="background:${s.bg};color:${s.color}">${getLabel(kode,s)}</div>`;
   }
 
-  function renderJam(kode, shifts) {
-    return kode === "OFF" ? "Hari Libur" : ((shifts[kode]?.jam) || "-");
+  function renderJam(kode,shifts) {
+    return kode==="OFF"?"Hari Libur":((shifts[kode]?.jam)||"-");
   }
 
-  function renderEmployee(nama, rawArr, tanggals, shifts) {
-    const arr       = Array.isArray(rawArr) ? rawArr : Object.values(rawArr);
-    const liburList = HARI.filter((_, i) => arr[i] === "OFF");
-    const footer    = liburList.length
-      ? `Hari libur : <span>${liburList.join(", ")}</span>`
-      : `<span>Tidak ada hari libur minggu ini</span>`;
-
-    const now      = new Date();
-    const todayStr = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
-
-    const cards = HARI.map((hari, i) => {
-      const kode    = arr[i] || "OFF";
-      const isToday = tanggals[i] === todayStr;
-      return `<div class="day${isToday ? " day-today" : ""}">
+  function renderEmployee(nama,rawArr,tanggals,shifts) {
+    const arr = Array.isArray(rawArr)?rawArr:Object.values(rawArr);
+    const liburList = HARI.filter((_,i)=>arr[i]==="OFF");
+    const footer = liburList.length
+      ?`Hari libur : <span>${liburList.join(", ")}</span>`
+      :`<span>Tidak ada hari libur minggu ini</span>`;
+    const now=new Date();
+    const todayStr=`${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const cards = HARI.map((hari,i) => {
+      const kode=arr[i]||"OFF", isToday=tanggals[i]===todayStr;
+      return `<div class="day${isToday?" day-today":""}">
         <div class="top">
           <div class="day-name">${hari}</div>
           <div class="date">${tanggals[i]}</div>
-          ${renderBadge(kode, shifts)}
+          ${renderBadge(kode,shifts)}
         </div>
-        <div class="time">${renderJam(kode, shifts)}</div>
+        <div class="time">${renderJam(kode,shifts)}</div>
       </div>`;
     }).join("");
-
     return `<div class="employee">
       <div class="employee-header">
         <div class="name">${nama.toUpperCase()}</div>
@@ -484,79 +349,91 @@
     </div>`;
   }
 
-  function render({tanggalMulai, tampilan, shifts, jadwal}) {
-    if (!jadwal || !shifts || !tanggalMulai) return;
-    const tanggals = getTanggals(tanggalMulai);
-    $app.innerHTML =
+  function render({tanggalMulai,tampilan,shifts,jadwal}) {
+    if (!jadwal||!shifts||!tanggalMulai) return;
+    const tanggals=getTanggals(tanggalMulai);
+    $app.innerHTML=
       `<div class="header">
-        <div class="title">${tampilan?.judul || "Jadwal Kerja"}</div>
-        <div class="subtitle">${getSubjudul(tanggalMulai, tampilan?.subjudul)}</div>
-      </div>` +
-      Object.entries(jadwal)
-        .map(([nama, arr]) => renderEmployee(nama, arr, tanggals, shifts))
-        .join("");
+        <div class="title">${tampilan?.judul||"Jadwal Kerja"}</div>
+        <div class="subtitle">${getSubjudul(tanggalMulai,tampilan?.subjudul)}</div>
+      </div>`+
+      Object.entries(jadwal).map(([nama,arr])=>renderEmployee(nama,arr,tanggals,shifts)).join("");
     setupAccordion();
   }
 
   function setupAccordion() {
-    const emps = [...document.querySelectorAll(".employee")];
-    const hdr  = document.querySelector(".header");
-    const reset = () => {
-      emps.forEach(e => { e.classList.remove("active"); e.style.display = "block"; });
-      hdr.style.display = "block";
+    const emps=[...document.querySelectorAll(".employee")];
+    const hdr=document.querySelector(".header");
+    const reset=()=>{
+      emps.forEach(e=>{e.classList.remove("active");e.style.display="block";});
+      hdr.style.display="block";
       $adminBtn.classList.remove("hide");
     };
-    emps.forEach(emp => {
-      emp.querySelector(".employee-header").addEventListener("click", () => {
-        const wasActive = emp.classList.contains("active");
+    emps.forEach(emp=>{
+      emp.querySelector(".employee-header").addEventListener("click",()=>{
+        const wasActive=emp.classList.contains("active");
         reset();
         if (!wasActive) {
           emp.classList.add("active");
-          emps.forEach(e => { if (e !== emp) e.style.display = "none"; });
-          hdr.style.display = "none";
+          emps.forEach(e=>{if(e!==emp)e.style.display="none";});
+          hdr.style.display="none";
           $adminBtn.classList.add("hide");
         }
       });
     });
   }
 
-  onValue(ref(db, "config"), snap => {
-    const cfg = snap.val();
-    if (cfg) {
-      $adminBtn.classList.remove("hide");
-      render(cfg);
-    } else {
-      $app.innerHTML = `<div class="loading-msg">Belum ada jadwal yang dikonfigurasi.<br>Login sebagai Admin untuk mengatur jadwal.</div>`;
+  // ── Firebase: jadwal listener ────────────────────────────
+  onValue(ref(db,"config"), snap=>{
+    const cfg=snap.val();
+    if (cfg) { $adminBtn.classList.remove("hide"); render(cfg); }
+    else {
+      $app.innerHTML=`<div class="loading-msg">Belum ada jadwal yang dikonfigurasi.<br>Login sebagai Admin untuk mengatur jadwal.</div>`;
       $adminBtn.classList.remove("hide");
     }
-  }, () => {
-    $app.innerHTML = `<div class="loading-msg">Gagal memuat jadwal. Periksa koneksi internet.</div>`;
+  }, ()=>{
+    $app.innerHTML=`<div class="loading-msg">Gagal memuat jadwal. Periksa koneksi internet.</div>`;
   });
 
-  window.openLogin = () => {
-    $overlay.style.display = "flex";
-    $loginErr.textContent  = "";
-    $email.focus();
-  };
-  window.closeLogin = () => { $overlay.style.display = "none"; };
-  window.loginAdmin = async () => {
-    const email = $email.value.trim();
-    const pass  = $password.value;
-    if (!email || !pass) { $loginErr.textContent = "Email dan password wajib diisi."; return; }
-    $loginBtn.textContent = "Logging in...";
-    $loginBtn.disabled    = true;
-    $loginErr.textContent = "";
+  // ── Firebase: notifikasi listener ────────────────────────
+  let notifFirstLoad = true;
+  onValue(ref(db,"config/lastNotif"), snap=>{
+    if (notifFirstLoad) { notifFirstLoad=false; return; }
+    const data=snap.val();
+    if (!data) return;
+
+    const lastSeen=parseInt(localStorage.getItem("lastNotifSeen")||"0");
+    if (data.timestamp<=lastSeen) return;
+    localStorage.setItem("lastNotifSeen", data.timestamp);
+
+    const pesan=data.pesan||"🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!";
+
+    // Browser notification
+    if (typeof Notification!=="undefined" && Notification.permission==="granted") {
+      new Notification("Jadwal Kerja Alhambra",{body:pesan,icon:"alhambra.png"});
+    }
+
+    // In-app toast
+    window.showToast(pesan);
+  });
+
+  // ── Auth ─────────────────────────────────────────────────
+  window.openLogin  = ()=>{ $overlay.style.display="flex"; $loginErr.textContent=""; $email.focus(); };
+  window.closeLogin = ()=>{ $overlay.style.display="none"; };
+  window.loginAdmin = async()=>{
+    const email=$email.value.trim(), pass=$password.value;
+    if (!email||!pass){ $loginErr.textContent="Email dan password wajib diisi."; return; }
+    $loginBtn.textContent="Logging in..."; $loginBtn.disabled=true; $loginErr.textContent="";
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      window.location.href = "admin.html";
+      await signInWithEmailAndPassword(auth,email,pass);
+      window.location.href="admin.html";
     } catch {
-      $loginErr.textContent = "Email atau password salah.";
-      $loginBtn.textContent = "LOGIN";
-      $loginBtn.disabled    = false;
+      $loginErr.textContent="Email atau password salah.";
+      $loginBtn.textContent="LOGIN"; $loginBtn.disabled=false;
     }
   };
-  $password.addEventListener("keydown", e => { if (e.key === "Enter") window.loginAdmin(); });
-  $overlay.addEventListener("click",    e => { if (e.target === $overlay) window.closeLogin(); });
+  $password.addEventListener("keydown",e=>{if(e.key==="Enter")window.loginAdmin();});
+  $overlay.addEventListener("click",e=>{if(e.target===$overlay)window.closeLogin();});
 </script>
 </body>
 </html>
