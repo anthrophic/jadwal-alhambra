@@ -246,8 +246,15 @@
         appId:             "1d780663-9c51-422c-b416-4085b6f14adf",
         notifyButton:      { enable: false },
         serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/jadwal-alhambra/" },
       });
-    } catch(e) { console.warn("OneSignal init:", e); }
+    } catch(e) {
+      console.warn("OneSignal init:", e);
+      window.showToast("OneSignal error: " + e.message);
+    }
+    // Debug: cek apakah device berhasil subscribe
+    const isSubscribed = OneSignal.User.PushSubscription.optedIn;
+    window.showToast(isSubscribed ? "✅ Terdaftar ke OneSignal!" : "⚠️ Belum terdaftar ke OneSignal");
   });
 
   window.requestNotif = async function() {
