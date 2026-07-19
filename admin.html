@@ -290,7 +290,7 @@
   <!-- ── TAB 3: Atur Jadwal ── -->
   <div class="page" id="jadwalPage">
     <div class="jadwal-container" id="jadwalContainer"></div>
-    <button class="save-btn" id="saveJadwalBtn" onclick="saveJadwal()">SIMPAN JADWAL</button>
+    <button class="save-btn" id="saveJadwalBtn" onclick="saveJadwal()" style="display:none">SIMPAN JADWAL</button>
   </div>
 
   <!-- ── TAB 4: Hari Libur ── -->
@@ -345,6 +345,8 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   import { getAuth, onAuthStateChanged, signOut }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getMessaging, getToken }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
   // ─── Firebase init ────────────────────────────────────────
   const app  = initializeApp({
@@ -357,7 +359,9 @@
     appId:             "1:268642441303:web:0e851cdd27daf4d1a36b12",
   });
   const db   = getDatabase(app);
-  const auth = getAuth(app);
+  const auth      = getAuth(app);
+  const messaging = getMessaging(app);
+  const VAPID_KEY = "BImBI04JoZG99s6qcfiQcxYhhF2nfHqDh463K1hWRhgrCJJ4Vc_gmMMqzl3b6PoBbZcDPKFC8Kiymvg0swudqUs";
 
   // ─── Firebase ref shortcuts ───────────────────────────────
   const dbRef = path => ref(db, path);
@@ -389,6 +393,7 @@
     if (!user) { window.location.href = "index.html"; return; }
     document.getElementById("userEmail").textContent = user.email;
     await loadConfig();
+    initAdminFCM();
     renderKaryawan();
     renderCustomShifts();
     renderJadwal();
@@ -499,6 +504,59 @@
   }
 
 
+  // ─── Admin FCM (admin juga terima notifikasi) ────────────
+  async function initAdminFCM() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (typeof Notification === "undefined") return;
+    try {
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      if (Notification.permission !== "granted") return;
+      const swReg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: swReg,
+      });
+      if (token) {
+        let devId = localStorage.getItem("fcm_dev_id");
+        if (!devId) {
+          devId = "dev_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem("fcm_dev_id", devId);
+        }
+        await set(dbRef("fcmTokens/" + devId), token);
+      }
+    } catch(e) { console.warn("Admin FCM:", e); }
+  }
+
+  // ─── Deteksi perubahan jadwal ─────────────────────────────
+  function getJadwalDariUI() {
+    return Object.fromEntries(
+      KARYAWAN.map(nama => [
+        nama,
+        HARI_LIST.map((_, hIdx) => {
+          const sel = document.querySelector(`input[name="r_${nama}_${hIdx}"]:checked`);
+          return sel ? sel.value : "OFF";
+        }),
+      ])
+    );
+  }
+
+  function cekPerubahanJadwal() {
+    const btn = document.getElementById("saveJadwalBtn");
+    if (!btn) return;
+    if (!currentJadwal) { btn.style.display = "block"; return; }
+    const ui = getJadwalDariUI();
+    const ada = KARYAWAN.some(nama => {
+      const saved = currentJadwal[nama];
+      return HARI_LIST.some((_, i) => {
+        const s = saved ? (Array.isArray(saved) ? saved[i] : Object.values(saved)[i]) || "OFF" : "OFF";
+        return (ui[nama]?.[i] || "OFF") !== s;
+      });
+    });
+    btn.style.display = ada ? "block" : "none";
+  }
+
   // ─── Render: Karyawan ─────────────────────────────────────
   function renderKaryawan() {
     const list = document.getElementById("karyawanList");
@@ -594,6 +652,12 @@
           <div class="card-body">${rows}</div>
         </div>`;
     }).join("");
+
+    // Pasang listener ke semua radio — deteksi perubahan
+    document.querySelectorAll('input[type="radio"]').forEach(r => {
+      r.addEventListener("change", cekPerubahanJadwal);
+    });
+    cekPerubahanJadwal();
   }
 
   // ─── Save: Jam Shift ──────────────────────────────────────
@@ -651,6 +715,7 @@
 
     // ── Otomatis kirim notifikasi ke semua user ──
     await kirimNotifikasi();
+    setTimeout(cekPerubahanJadwal, 2600); // sembunyikan tombol setelah sukses
   });
 
   // ─── Logout ───────────────────────────────────────────────
