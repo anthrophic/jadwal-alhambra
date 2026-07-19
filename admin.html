@@ -480,25 +480,24 @@
   }
 
   // ─── Kirim notifikasi ────────────────────────────────────
-  // 1) Tulis ke Firebase → notif muncul kalau app sedang terbuka
-  // 2) Panggil GAS → OneSignal kirim push notification ke background
   async function kirimNotifikasi() {
-    // Firebase in-app notification
+    // 1. Firebase lastNotif → in-app toast untuk yang sedang buka halaman
     try {
       await set(dbRef("config/lastNotif"), {
         timestamp: Date.now(),
-        pesan:     "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
+        pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
       });
-    } catch(e) { console.warn("Firebase notif error:", e); }
+    } catch(e) { console.warn("Firebase notif:", e); }
 
-    // OneSignal push notification via GAS (no-cors: request tetap terkirim)
+    // 2. GAS → FCM push ke semua device (background)
     try {
       await fetch(
-        "https://script.google.com/macros/s/AKfycbx_GLfZ6L_OQ7SaIG6s3_VxM87YRYiaa8oGkaMBeEFWCnaXiy_iVedcHTJdt9QAaU0Vgw/exec",
+        "https://script.google.com/macros/s/AKfycbyBekdd_ylmVfV-8OPbdLnOELazs11X2KIIFPnagOyGLpaDloIfSzT0KOwXUG6zVs00IA/exec",
         { mode: "no-cors" }
       );
-    } catch(e) { console.warn("GAS notif error:", e); }
+    } catch(e) { console.warn("GAS error:", e); }
   }
+
 
   // ─── Render: Karyawan ─────────────────────────────────────
   function renderKaryawan() {
