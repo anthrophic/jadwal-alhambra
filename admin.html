@@ -360,7 +360,6 @@
   });
   const db   = getDatabase(app);
   const auth      = getAuth(app);
-  const messaging = getMessaging(app);
   const VAPID_KEY = "BImBI04JoZG99s6qcfiQcxYhhF2nfHqDh463K1hWRhgrCJJ4Vc_gmMMqzl3b6PoBbZcDPKFC8Kiymvg0swudqUs";
 
   // ─── Firebase ref shortcuts ───────────────────────────────
@@ -514,7 +513,8 @@
       }
       if (Notification.permission !== "granted") return;
       const swReg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
-      const token = await getToken(messaging, {
+      const msg   = getMessaging(app);
+      const token = await getToken(msg, {
         vapidKey: VAPID_KEY,
         serviceWorkerRegistration: swReg,
       });
@@ -529,32 +529,13 @@
     } catch(e) { console.warn("Admin FCM:", e); }
   }
 
-  // ─── Deteksi perubahan jadwal ─────────────────────────────
-  function getJadwalDariUI() {
-    return Object.fromEntries(
-      KARYAWAN.map(nama => [
-        nama,
-        HARI_LIST.map((_, hIdx) => {
-          const sel = document.querySelector(`input[name="r_${nama}_${hIdx}"]:checked`);
-          return sel ? sel.value : "OFF";
-        }),
-      ])
-    );
-  }
+  // ─── Deteksi perubahan jadwal (dirty flag) ───────────────
+  let _jadwalDirty = false;
 
-  function cekPerubahanJadwal() {
+  function setDirty(val) {
+    _jadwalDirty = val;
     const btn = document.getElementById("saveJadwalBtn");
-    if (!btn) return;
-    if (!currentJadwal) { btn.style.display = "block"; return; }
-    const ui = getJadwalDariUI();
-    const ada = KARYAWAN.some(nama => {
-      const saved = currentJadwal[nama];
-      return HARI_LIST.some((_, i) => {
-        const s = saved ? (Array.isArray(saved) ? saved[i] : Object.values(saved)[i]) || "OFF" : "OFF";
-        return (ui[nama]?.[i] || "OFF") !== s;
-      });
-    });
-    btn.style.display = ada ? "block" : "none";
+    if (btn) btn.style.display = val ? "block" : "none";
   }
 
   // ─── Render: Karyawan ─────────────────────────────────────
@@ -653,11 +634,11 @@
         </div>`;
     }).join("");
 
-    // Pasang listener ke semua radio — deteksi perubahan
-    document.querySelectorAll('input[type="radio"]').forEach(r => {
-      r.addEventListener("change", cekPerubahanJadwal);
+    // Pasang listener — set dirty saat ada perubahan
+    setDirty(false); // reset saat tab dibuka ulang
+    document.querySelectorAll('.jadwal-container input[type="radio"]').forEach(r => {
+      r.addEventListener("change", () => setDirty(true));
     });
-    cekPerubahanJadwal();
   }
 
   // ─── Save: Jam Shift ──────────────────────────────────────
@@ -715,7 +696,7 @@
 
     // ── Otomatis kirim notifikasi ke semua user ──
     await kirimNotifikasi();
-    setTimeout(cekPerubahanJadwal, 2600); // sembunyikan tombol setelah sukses
+    setTimeout(() => setDirty(false), 2600); // sembunyikan tombol setelah sukses
   });
 
   // ─── Logout ───────────────────────────────────────────────
