@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -484,22 +485,33 @@
   }
 
   // ─── Kirim notifikasi ────────────────────────────────────
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyWE9SVfF6Y-H3wYIjdlZH0KSTU6Zgqsd-YswYvYxl8ZFq25NE0fS17EW8p1tdYypjNPw/exec";
+
   async function kirimNotifikasi() {
-    // 1. Firebase lastNotif → in-app toast untuk yang sedang buka halaman
+    // 1. Firebase lastNotif → toast in-app untuk yang sedang buka halaman
     try {
       await set(dbRef("config/lastNotif"), {
         timestamp: Date.now(),
         pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
       });
-    } catch(e) { console.warn("Firebase notif:", e); }
+    } catch(e) { console.warn("Firebase:", e); }
 
-    // 2. GAS → FCM push ke semua device (background)
+    // 2. Panggil GAS via service worker (lebih reliable, tidak ada CORS issue)
     try {
-      await fetch(
-        "https://script.google.com/macros/s/AKfycbyWE9SVfF6Y-H3wYIjdlZH0KSTU6Zgqsd-YswYvYxl8ZFq25NE0fS17EW8p1tdYypjNPw/exec",
-        { mode: "no-cors" }
-      );
-    } catch(e) { console.warn("GAS error:", e); }
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.active) {
+        reg.active.postMessage({
+          type: "CALL_GAS",
+          url:  GAS_URL + "?t=" + Date.now()
+        });
+        return; // SW handle sisanya
+      }
+    } catch(e) { console.warn("SW:", e); }
+
+    // Fallback: fetch langsung kalau SW tidak tersedia
+    try {
+      await fetch(GAS_URL, { mode: "no-cors" });
+    } catch(e) { console.warn("GAS fallback:", e); }
   }
 
 
