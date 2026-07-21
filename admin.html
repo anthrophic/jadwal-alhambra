@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -485,8 +484,6 @@
   }
 
   // ─── Kirim notifikasi ────────────────────────────────────
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyWE9SVfF6Y-H3wYIjdlZH0KSTU6Zgqsd-YswYvYxl8ZFq25NE0fS17EW8p1tdYypjNPw/exec";
-
   async function kirimNotifikasi() {
     // 1. Firebase lastNotif → toast in-app untuk yang sedang buka halaman
     try {
@@ -494,24 +491,16 @@
         timestamp: Date.now(),
         pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
       });
-    } catch(e) { console.warn("Firebase:", e); }
+    } catch(e) { console.warn("Firebase lastNotif:", e); }
 
-    // 2. Panggil GAS via service worker (lebih reliable, tidak ada CORS issue)
+    // 2. Tulis pendingNotif → GAS time trigger akan baca ini tiap 1 menit
+    //    dan kirim FCM ke semua device. Tidak ada fetch ke GAS dari browser!
     try {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg.active) {
-        reg.active.postMessage({
-          type: "CALL_GAS",
-          url:  GAS_URL + "?t=" + Date.now()
-        });
-        return; // SW handle sisanya
-      }
-    } catch(e) { console.warn("SW:", e); }
-
-    // Fallback: fetch langsung kalau SW tidak tersedia
-    try {
-      await fetch(GAS_URL, { mode: "no-cors" });
-    } catch(e) { console.warn("GAS fallback:", e); }
+      await set(dbRef("config/pendingNotif"), {
+        timestamp: Date.now(),
+        pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
+      });
+    } catch(e) { console.warn("Firebase pendingNotif:", e); }
   }
 
 
