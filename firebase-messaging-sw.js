@@ -18,10 +18,22 @@ messaging.onBackgroundMessage(payload => {
   self.registration.showNotification(
     payload.notification?.title || 'Jadwal Kerja Alhambra',
     {
-      body:  payload.notification?.body || '🗓️ Jadwal minggu ini sudah diperbarui!',
-      icon:  '/jadwal-alhambra/alhambra.png',
-      click_action: 'https://anthrophic.github.io/jadwal-alhambra/',
+      body: payload.notification?.body || '🗓️ Jadwal minggu ini sudah diperbarui!',
+      icon: '/jadwal-alhambra/alhambra.png',
     }
   );
 });
 
+// ── Terima perintah dari admin.html untuk panggil GAS ──────
+// Service worker bisa fetch cross-origin tanpa CORS issue
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'CALL_GAS') {
+    fetch(event.data.url, { mode: 'no-cors' })
+      .then(() => {
+        if (event.source) event.source.postMessage({ type: 'GAS_OK' });
+      })
+      .catch(e => {
+        if (event.source) event.source.postMessage({ type: 'GAS_ERROR', msg: e.toString() });
+      });
+  }
+});
