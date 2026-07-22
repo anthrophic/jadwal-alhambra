@@ -484,6 +484,8 @@
   }
 
   // ─── Kirim notifikasi ────────────────────────────────────
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyWE9SVfF6Y-H3wYIjdlZH0KSTU6Zgqsd-YswYvYxl8ZFq25NE0fS17EW8p1tdYypjNPw/exec";
+
   async function kirimNotifikasi() {
     // 1. Firebase lastNotif → toast in-app untuk yang sedang buka halaman
     try {
@@ -491,16 +493,24 @@
         timestamp: Date.now(),
         pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
       });
-    } catch(e) { console.warn("Firebase lastNotif:", e); }
+    } catch(e) { console.warn("Firebase:", e); }
 
-    // 2. Tulis pendingNotif → GAS time trigger akan baca ini tiap 1 menit
-    //    dan kirim FCM ke semua device. Tidak ada fetch ke GAS dari browser!
-    try {
-      await set(dbRef("config/pendingNotif"), {
-        timestamp: Date.now(),
-        pesan: "🗓️ Jadwal minggu ini sudah diperbarui, cek sekarang!",
-      });
-    } catch(e) { console.warn("Firebase pendingNotif:", e); }
+    // 2. Hidden iframe — persis seperti buka URL di browser
+    //    Cross-origin iframe TIDAK dikontrol service worker
+    //    sehingga GAS pasti berjalan seperti saat kamu buka URL manual
+    await new Promise(resolve => {
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;width:1px;height:1px;top:-200px;left:-200px;border:none;opacity:0;pointer-events:none";
+      const cleanup = () => {
+        try { if (document.body.contains(iframe)) document.body.removeChild(iframe); } catch(e) {}
+        resolve();
+      };
+      iframe.onload  = cleanup;
+      iframe.onerror = cleanup;
+      iframe.src = GAS_URL + "?t=" + Date.now();
+      document.body.appendChild(iframe);
+      setTimeout(cleanup, 10000); // timeout 10 detik
+    });
   }
 
 
